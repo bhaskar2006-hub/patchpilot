@@ -1,0 +1,46 @@
+name: PatchPilot Self-Heal Action
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_command:
+        description: "Test command to execute and heal"
+        required: false
+        default: "pytest"
+      model:
+        description: "Local or hosted open-weight model name"
+        required: false
+        default: "qwen2.5-coder:1.5b"
+
+jobs:
+  auto-heal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install PatchPilot
+        run: pip install -e .
+      - name: Install and Start Ollama
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve &
+          sleep 3
+          ollama pull ${{ github.event.inputs.model }}
+      - name: Run Self-Healing Loop
+        run: |
+          patchpilot heal --cmd "${{ github.event.inputs.test_command }}" --model "${{ github.event.inputs.model }}" --commit
+      - name: Create Pull Request with Verified Fix
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "fix(ci): self-heal test failures via PatchPilot"
+          title: "🤖 [PatchPilot] Automated Self-Healing Patch"
+          body: |
+            This PR was automatically generated and verified by **PatchPilot** using open-weight model `${{ github.event.inputs.model }}`.
+            
+            - All test suites passed in local validation.
+            - Zero external cloud API dependency.
+          branch: "patchpilot-autoheal"
