@@ -12,21 +12,13 @@ Your job is to fix failing tests with the absolute minimal surgical change neces
 
 RULES:
 1. Analyze the stack trace and the provided file contents carefully.
-2. Output ONLY the corrected full replacement content for the target file or a clean UNIFIED DIFF.
-3. Do NOT rewrite unrelated code or add unnecessary dependencies.
-4. Format your patch inside a markdown code block:
+2. Output the COMPLETE file content with the fix applied, preserving all existing functions, imports, and docstrings.
+3. Do NOT omit or remove any existing helper functions or unchanged code.
+4. Format your patch inside a single markdown code block:
 ```python
-# Fixed content
+# Full updated file content
 ```
-or
-```diff
---- a/filepath
-+++ b/filepath
-@@ ... @@
-- broken
-+ fixed
-```
-5. Keep explanations brief (1-2 sentences at most)."""
+5. Do NOT include placeholder comments like '... rest of code remains the same ...'."""
 
     @staticmethod
     def build_repair_prompt(
@@ -51,7 +43,7 @@ Target File: {file_path}
 {stack_trace}
 ```
 
-### CURRENT FILE CONTENT ({file_path}):
+### ORIGINAL FULL FILE CONTENT ({file_path}):
 ```
 {file_content}
 ```
@@ -68,7 +60,7 @@ Please provide an improved, corrected fix.
 
         prompt += f"""
 ### TASK:
-Provide the complete fixed source code for `{file_path}` inside a codeblock.
+Output the FULL, complete corrected file for `{file_path}` inside a codeblock. Ensure all other existing functions and imports in the file are kept intact.
 """
         return prompt
 

@@ -73,6 +73,19 @@ class TestLogParser:
                         file_path, line_no = source_matches[-1]
                     else:
                         file_path, line_no = all_matches[-1][0], int(all_matches[-1][1])
+                        # Check if this is a test file and has a matching source file (e.g., test_calc.py -> calc.py)
+                        base = os.path.basename(file_path)
+                        dir_name = os.path.dirname(file_path)
+                        if base.startswith("test_"):
+                            candidate = os.path.join(dir_name, base[5:])
+                            if os.path.exists(candidate):
+                                file_path = candidate
+                                line_no = None
+                        elif base.endswith("_test.py"):
+                            candidate = os.path.join(dir_name, base[:-8] + ".py")
+                            if os.path.exists(candidate):
+                                file_path = candidate
+                                line_no = None
                 else:
                     file_match = re.search(r"([^\s:]+\.py)", trace)
                     file_path = file_match.group(1) if file_match else "unknown.py"

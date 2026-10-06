@@ -1,6 +1,5 @@
-"""Core engine orchestrating the test-diagnose-patch-verify autonomous healing loop."""
-
 import os
+import re
 from dataclasses import dataclass
 from typing import List, Optional, Callable
 
@@ -146,8 +145,19 @@ class SelfHealingEngine:
                     self._notify(f"⚠️ SLM output did not contain valid codeblock.")
                     continue
 
-                # Apply candidate fix
-                self.git.apply_file_content(file_path, repaired_code)
+                # Apply candidate fix (with smart function merge if model returned only the modified function)
+                final_code = repaired_code
+                fn_match = re.match(r"^def\s+([a-zA-Z0-9_]+)\s*\(", repaired_code.strip())
+                if fn_match:
+                    fn_name = fn_match.group(1)
+                    orig_fns = re.findall(r"def\s+([a-zA-Z0-9_]+)\s*\(", original_code)
+                    if len(orig_fns) > 1 and len(re.findall(r"def\s+([a-zA-Z0-9_]+)\s*\(", repaired_code)) == 1:
+                        pattern = rf"(def\s+{fn_name}\s*\([^)]*\).*?)(?=\ndef\s+|\Z)"
+                        merged = re.sub(pattern, repaired_code.strip() + "\n", original_code, flags=re.DOTALL)
+                        if merged != original_code:
+                            final_code = merged
+
+                self.git.apply_file_content(file_path, final_code)
                 diff = self.git.get_diff(file_path)
 
                 self._notify("🧪 Verifying patch with test suite...")
